@@ -123,7 +123,9 @@ public class EC2Helper {
             System.out.println("No instances found for the given public IP");
             return null;
         } else {
-            return reservations.get(0).getInstances().get(0).getInstanceId();
+            String instanceId = reservations.get(0).getInstances().get(0).getInstanceId();
+            System.out.println(MessageFormat.format("Instance {0} found for public IP {1}", instanceId, publicIP));
+            return instanceId;
         }
     }
 
