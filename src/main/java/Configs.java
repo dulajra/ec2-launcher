@@ -19,7 +19,7 @@ public class Configs {
     public static final String WORKER_INSTANCE_AMI_ID = "ami-0bbeee0e100620288";
 
     public static final String KEY_FILE_PATH = "/home/dulaj/.ssh/AWS-Dev-Key-Pair.pem";
-    public static final String JAR_FILE_PATH = "/home/dulaj/workspace/PERSONAL/ec2-launcher/src/main/resources/sample.txt";
+    public static final String JAR_FILE_PATH = "/home/dulaj/workspace/PERSONAL/ec2-launcher/src/main/resources/sample.jar";
     public static final String REMOTE_JAR_DIRECTORY = "./";
-    public static final Object CRON_COMMAND = "@reboot java -cp ~/appBath/app.jar App";
+    public static final Object CRON_COMMAND = "@reboot java -cp ~/sample.jar";
 }
