@@ -8,6 +8,7 @@ import com.amazonaws.services.ec2.model.DescribeImagesRequest;
 import com.amazonaws.services.ec2.model.DescribeInstanceStatusRequest;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 import com.amazonaws.services.ec2.model.DescribeInstancesResult;
+import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
@@ -38,7 +39,6 @@ public class EC2Helper {
      * @param name Name for the instance
      * @param amiID AMI ID to be used
      * @param instanceCount Number of instances to be created
-     *
      * @return @RunInstancesResult with including details of created instances
      */
     public RunInstancesResult launchEC2(String name, String amiID, int instanceCount) {
@@ -93,7 +93,6 @@ public class EC2Helper {
      * Get public IP address of the given EC2 instance ID
      *
      * @param instanceID EC2 instance ID
-     *
      * @return Public IP address of the instance
      */
     public String getPublicIPOfInstance (String instanceID) {
@@ -110,11 +109,29 @@ public class EC2Helper {
     }
 
     /**
+     * Get instance ID address of the given EC2 instance with given public IP
+     *
+     * @param publicIP Public IP of EC2 instance
+     * @return Instance ID
+     */
+    public String getInstanceID (String publicIP) {
+        DescribeInstancesRequest request = new DescribeInstancesRequest().withFilters(new Filter("ip-address").withValues(publicIP));
+        DescribeInstancesResult result = ec2.describeInstances(request);
+        List<Reservation> reservations = result.getReservations();
+
+        if (reservations.get(0).getInstances().isEmpty()) {
+            System.out.println("No instances found for the given public IP");
+            return null;
+        } else {
+            return reservations.get(0).getInstances().get(0).getInstanceId();
+        }
+    }
+
+    /**
      * Create a new AMI using the given EC2 instance. This function will wait until the AMI reaches to available state
      *
      * @param instanceID ID of the EC2 instance to be used for AMI
      * @param description Description for newly created AMI
-     *
      * @return ID of the created AMI
      */
     public String createAMI(String instanceID, String description) {
