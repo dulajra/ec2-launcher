@@ -30,7 +30,7 @@ public class Main {
      */
     public static void createAndClone() {
         String originalInstanceIP = new OriginalEC2Launcher().launch(Configs.ORIGINAL_INSTANCE_NAME);
-        System.out.println("Original instance launched. IP: " + originalInstanceIP);
+        System.out.println("Original instance creation done. IP: " + originalInstanceIP);
         String clonedInstanceIP = new WorkerEC2Launcher().clone(Configs.WORKER_INSTANCE_NAME, originalInstanceIP);
         System.out.println("Cloned instance launched. IP: " + originalInstanceIP);
     }
