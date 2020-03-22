@@ -22,9 +22,9 @@ public class SSHHelper {
     /**
      * Open a SSH session with the remote server
      *
-     * @param user Linux user to log it
-     * @param host IP Address of the remote instance
-     * @param port Port to be used for SSH/SCP
+     * @param user        Linux user to log it
+     * @param host        IP Address of the remote instance
+     * @param port        Port to be used for SSH/SCP
      * @param keyFilePath Absolute path of the key file (pem file)
      * @param keyPassword Passphrase for the ky file if any else null
      * @return A new SSH @{@link Session}
@@ -88,8 +88,8 @@ public class SSHHelper {
     /**
      * Copy a file from local machine to a remote host using SCP
      *
-     * @param session SSH session to connect with remote host
-     * @param localFilePath Absolute path of the local file
+     * @param session         SSH session to connect with remote host
+     * @param localFilePath   Absolute path of the local file
      * @param remoteDirectory Destination directory to copy the file in remote host
      */
     public static void scp(Session session, String localFilePath, String remoteDirectory) {

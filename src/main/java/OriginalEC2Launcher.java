@@ -1,6 +1,5 @@
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
-import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
 import java.text.MessageFormat;
@@ -41,10 +40,10 @@ public class OriginalEC2Launcher {
     /**
      * Copy the Jar file from local machine to remote instance using SCP
      *
-     * @param instanceIp IP of remote instance
-     * @param username Username of EC2 instance to log in
-     * @param keyFilePath Absolute path to key file (pem file)
-     * @param localFilePath Absolute path of local jar file
+     * @param instanceIp      IP of remote instance
+     * @param username        Username of EC2 instance to log in
+     * @param keyFilePath     Absolute path to key file (pem file)
+     * @param localFilePath   Absolute path of local jar file
      * @param remoteDirectory Path of the remote instance directory to copy
      */
     private void copyJarToInstance(String instanceIp, String username, String keyFilePath, String localFilePath, String remoteDirectory) {
@@ -59,8 +58,8 @@ public class OriginalEC2Launcher {
     /**
      * Set cron configurations on the remote instance
      *
-     * @param instanceIp IP of remote instance
-     * @param username Username of EC2 instance to log in
+     * @param instanceIp  IP of remote instance
+     * @param username    Username of EC2 instance to log in
      * @param keyFilePath Absolute path to key file (pem file)
      */
     public void setCronConfig(String instanceIp, String username, String keyFilePath) {

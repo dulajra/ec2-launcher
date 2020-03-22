@@ -36,8 +36,8 @@ public class EC2Helper {
     /**
      * Launch new EC2 instance(s) with given configurations
      *
-     * @param name Name for the instance
-     * @param amiID AMI ID to be used
+     * @param name          Name for the instance
+     * @param amiID         AMI ID to be used
      * @param instanceCount Number of instances to be created
      * @return @RunInstancesResult with including details of created instances
      */
@@ -95,7 +95,7 @@ public class EC2Helper {
      * @param instanceID EC2 instance ID
      * @return Public IP address of the instance
      */
-    public String getPublicIPOfInstance (String instanceID) {
+    public String getPublicIPOfInstance(String instanceID) {
         DescribeInstancesRequest request = new DescribeInstancesRequest().withInstanceIds(instanceID);
         DescribeInstancesResult result = ec2.describeInstances(request);
         List<Reservation> reservations = result.getReservations();
@@ -114,7 +114,7 @@ public class EC2Helper {
      * @param publicIP Public IP of EC2 instance
      * @return Instance ID
      */
-    public String getInstanceID (String publicIP) {
+    public String getInstanceID(String publicIP) {
         DescribeInstancesRequest request = new DescribeInstancesRequest().withFilters(new Filter("ip-address").withValues(publicIP));
         DescribeInstancesResult result = ec2.describeInstances(request);
         List<Reservation> reservations = result.getReservations();
@@ -132,7 +132,7 @@ public class EC2Helper {
     /**
      * Create a new AMI using the given EC2 instance. This function will wait until the AMI reaches to available state
      *
-     * @param instanceID ID of the EC2 instance to be used for AMI
+     * @param instanceID  ID of the EC2 instance to be used for AMI
      * @param description Description for newly created AMI
      * @return ID of the created AMI
      */
