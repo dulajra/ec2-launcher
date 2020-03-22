@@ -7,6 +7,12 @@ public class EC2Cloner {
 
     private EC2Helper ec2Helper = new EC2Helper();
 
+    /**
+     * Launch an worker instance with the given name
+     *
+     * @param name Name for the new instance
+     * @return Public IP address of the created instance
+     */
     public String clone (String name) {
         RunInstancesResult runInstancesResult = ec2Helper.launchEC2(name, Configs.WORKER_INSTANCE_AMI_ID, 1);
 

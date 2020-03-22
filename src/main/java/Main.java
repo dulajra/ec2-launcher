@@ -1,8 +1,10 @@
 public class Main {
 
     public static void main(String[] args) {
-        createOriginalInstance();
+//        createOriginalInstance();
 //        createWorkerInstance();
+        EC2Helper ec2Helper = new EC2Helper();
+        ec2Helper.createAMI("i-0ec4f51c2abd89980", "Automated AMI");
     }
 
     public static void createOriginalInstance () {
