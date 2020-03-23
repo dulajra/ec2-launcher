@@ -3,8 +3,8 @@ import com.amazonaws.services.ec2.model.InstanceType;
 public class Configs {
 
     public static final String REGION = "us-east-1";
-    public static final String AWS_ACCESS_KEY_ID = "AKIAVJ5X4CQ7ABKCH23G";
-    public static final String AWS_SECRET_ACCESS_KEY = "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";
+    public static final String AWS_ACCESS_KEY_ID = "xxxx";
+    public static final String AWS_SECRET_ACCESS_KEY = "xxxx";
 
     public static final String SECURITY_GROUP_ID = "sg-57ca0c1c";
     public static final String SUBNET_ID = "subnet-3a8ee870";

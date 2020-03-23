@@ -141,7 +141,7 @@ public class EC2Helper {
                 .withInstanceId(instanceID)
                 .withDescription(description)
                 .withName(description + "-" + System.currentTimeMillis())
-                .withNoReboot(true));
+                .withNoReboot(false));
 
         String amiId = imageResult.getImageId();
 
