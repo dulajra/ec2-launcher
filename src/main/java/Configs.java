@@ -1,10 +1,12 @@
+package main.java;
+
 import com.amazonaws.services.ec2.model.InstanceType;
 
 public class Configs {
 
     public static final String REGION = "us-east-1";
-    public static final String AWS_ACCESS_KEY_ID = "xxxx";
-    public static final String AWS_SECRET_ACCESS_KEY = "xxxx";
+    public static final String AWS_ACCESS_KEY_ID = System.getenv("AWS_ACCESS_KEY_ID");
+    public static final String AWS_SECRET_ACCESS_KEY = System.getenv("AWS_SECRET_ACCESS_KEY");
 
     public static final String SECURITY_GROUP_ID = "sg-57ca0c1c";
     public static final String SUBNET_ID = "subnet-3a8ee870";

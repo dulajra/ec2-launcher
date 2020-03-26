@@ -1,3 +1,4 @@
+/*
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -19,7 +20,8 @@ import static java.util.Arrays.asList;
 
 public class SSHHelper {
 
-    /**
+    */
+/**
      * Open a SSH session with the remote server
      *
      * @param user        Linux user to log it
@@ -28,7 +30,8 @@ public class SSHHelper {
      * @param keyFilePath Absolute path of the key file (pem file)
      * @param keyPassword Passphrase for the ky file if any else null
      * @return A new SSH @{@link Session}
-     */
+     *//*
+
     public static @Nullable
     Session createSession(String user, String host, int port, String keyFilePath, String keyPassword) {
         try {
@@ -56,13 +59,15 @@ public class SSHHelper {
         }
     }
 
-    /**
+    */
+/**
      * Execute the given command on a remote host using SSH
      *
      * @param session SSH Session to connect with remote host
      * @param command Command to be executed on remote host
      * @return stdout response of the remote host command execution
-     */
+     *//*
+
     public static @Nullable
     List<String> sshAndRunCommand(Session session, String command) {
         ChannelExec channel = null;
@@ -85,13 +90,15 @@ public class SSHHelper {
         }
     }
 
-    /**
+    */
+/**
      * Copy a file from local machine to a remote host using SCP
      *
      * @param session         SSH session to connect with remote host
      * @param localFilePath   Absolute path of the local file
      * @param remoteDirectory Destination directory to copy the file in remote host
-     */
+     *//*
+
     public static void scp(Session session, String localFilePath, String remoteDirectory) {
         boolean ptimestamp = true;
         ChannelExec channel = null;
@@ -211,3 +218,4 @@ public class SSHHelper {
         return b;
     }
 }
+*/
