@@ -1,4 +1,4 @@
-package main.java;
+package org.example;
 
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
@@ -12,6 +12,7 @@ import com.amazonaws.services.ec2.model.TagSpecification;
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
 import com.amazonaws.services.sqs.model.GetQueueAttributesRequest;
+import main.java.Configs;
 
 import java.util.ArrayList;
 import java.util.Collection;

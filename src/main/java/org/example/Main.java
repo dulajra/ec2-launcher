@@ -1,4 +1,4 @@
-package main.java;
+package org.example;
 
 public class Main {
 
@@ -13,6 +13,8 @@ public class Main {
             } else {
                 System.out.println("Unrecognized option");
             }
+        } else {
+            System.out.println("No arguments supplied");
         }
     }
 }

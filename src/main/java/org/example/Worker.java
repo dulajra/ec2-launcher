@@ -1,4 +1,4 @@
-package main.java;
+package org.example;
 
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
@@ -13,6 +13,7 @@ import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 import com.amazonaws.util.EC2MetadataUtils;
+import main.java.Configs;
 
 import java.io.BufferedReader;
 import java.io.FileOutputStream;
