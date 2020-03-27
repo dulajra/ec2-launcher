@@ -3,8 +3,13 @@ package org.example;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.DescribeInstanceStatusRequest;
+import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
+import com.amazonaws.services.ec2.model.DescribeInstancesResult;
+import com.amazonaws.services.ec2.model.Filter;
+import com.amazonaws.services.ec2.model.IamInstanceProfileSpecification;
 import com.amazonaws.services.ec2.model.InstanceStateName;
 import com.amazonaws.services.ec2.model.InstanceStatus;
+import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.Tag;
@@ -21,10 +26,11 @@ import java.util.Map;
 
 public class AutoScalar {
 
-    private static final int MAX_TOTAL_INSTANCES_ALLOWED = 5;
+    private static final int MAX_TOTAL_INSTANCES_ALLOWED = 8;
     private static final String INPUT_QUEUE_NAME = "inputMessageQueue";
     private static final String SECURITY_GROUP_ID = "sg-0b8881f281d0e29ff";
-    private static final String AMI_ID = "";
+    private static final String IAM_ROLE_NAME = "Pi-Developer-Role";
+    private static final String AMI_ID = "ami-0f288d91f39b59fa2";
     private static final String INSTANCE_TYPE = "t2.micro";
 
     private AmazonSQS sqsClient = AmazonSQSClientBuilder.standard()
@@ -42,32 +48,38 @@ public class AutoScalar {
     public void scaleUpInstances() {
         while (true) {
             int countOfPendingRequests = numberOfMessagesCurrentlyInQueue(inputQueueUrl);
+            System.out.println("\nTotal no messages in queue: " + countOfPendingRequests);
 
             if (countOfPendingRequests > 0) {
+                int totalInstances = numberOfRunningInstances();
+                System.out.println("Total running instances: " + totalInstances);
+                int workerInstances = numberOfWorkerInstances();
+                System.out.println("Total running workers: " + workerInstances);
 
-                int alreadyRunningInstances = numberOfRunningInstances();
+                if (countOfPendingRequests > workerInstances) {
 
-                int numberOfAppTierInstances = alreadyRunningInstances - 1;
+                    int maxAllowedLaunches = MAX_TOTAL_INSTANCES_ALLOWED - totalInstances;
 
-                if (countOfPendingRequests > numberOfAppTierInstances) {
-
-                    int MaximumAppInstances = MAX_TOTAL_INSTANCES_ALLOWED - numberOfAppTierInstances;
-
-                    if (MaximumAppInstances > 0) {
-                        int temp1 = countOfPendingRequests - numberOfAppTierInstances;
-                        int toCreate = Math.min(MaximumAppInstances, temp1);
+                    if (maxAllowedLaunches > 0) {
+                        int requiredNewWorkers = countOfPendingRequests - workerInstances;
+                        System.out.println("Need new workers: " + requiredNewWorkers);
+                        int toCreate = Math.min(maxAllowedLaunches, requiredNewWorkers);
+                        System.out.println("Creating new workers: " + toCreate);
                         createAppTierInstances(toCreate);
+                    } else {
+                        System.out.println("No more instances are allowed!");
                     }
 
                     try {
-                        Thread.sleep(5000);
+                        Thread.sleep(10000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
             } else {
+                System.out.println("No pending requests. Going to sleep...");
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(10000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -85,16 +97,34 @@ public class AutoScalar {
     }
 
     private int numberOfRunningInstances() {
-        DescribeInstanceStatusRequest request = new DescribeInstanceStatusRequest();
-        request.setIncludeAllInstances(true);
+        DescribeInstancesRequest request = new DescribeInstancesRequest();
+        request.withFilters(
+                new Filter().withName("instance-state-name").withValues("pending", "running")
+        );
 
-        List<InstanceStatus> instanceList = ec2Client.describeInstanceStatus(request).getInstanceStatuses();
+        DescribeInstancesResult describeInstancesResult = ec2Client.describeInstances(request);
         int count = 0;
 
-        for (InstanceStatus i : instanceList) {
-            if (i.getInstanceState().getName().equals(InstanceStateName.Running.toString()) || i.getInstanceState().getName().equals(InstanceStateName.Pending.toString())) {
-                count += 1;
-            }
+        for (Reservation reservation : describeInstancesResult.getReservations()) {
+            count += reservation.getInstances().size();
+        }
+
+        return count;
+    }
+
+    private int numberOfWorkerInstances() {
+        DescribeInstancesRequest request = new DescribeInstancesRequest();
+        request.withFilters(
+                new Filter().withName("instance-state-name").withValues("pending", "running"),
+                new Filter().withName("tag:Name").withValues("Worker Instance"),
+                new Filter().withName("tag:type").withValues("auto-scaled")
+        );
+
+        DescribeInstancesResult describeInstancesResult = ec2Client.describeInstances(request);
+        int count = 0;
+
+        for (Reservation reservation : describeInstancesResult.getReservations()) {
+            count += reservation.getInstances().size();
         }
 
         return count;
@@ -102,9 +132,15 @@ public class AutoScalar {
 
     private void createAppTierInstances(int numberOfInstancesToLaunch) {
         Collection<Tag> tags = new ArrayList<>();
+
         Tag t = new Tag();
         t.setKey("Name");
-        t.setValue("Worker-Instance");
+        t.setValue("Worker Instance");
+        tags.add(t);
+
+        t = new Tag();
+        t.setKey("type");
+        t.setValue("auto-scaled");
         tags.add(t);
 
         List<String> securityGroupList = new ArrayList<String>();
@@ -117,9 +153,13 @@ public class AutoScalar {
         Collection<TagSpecification> tagSpecifications = new ArrayList<>();
         tagSpecifications.add(tagSpecification);
 
+        IamInstanceProfileSpecification iamSpecification = new IamInstanceProfileSpecification();
+        iamSpecification.setName(IAM_ROLE_NAME);
+
         RunInstancesRequest runRequest = new RunInstancesRequest(AMI_ID, numberOfInstancesToLaunch, numberOfInstancesToLaunch);
         runRequest.setInstanceType(INSTANCE_TYPE);
         runRequest.setSecurityGroupIds(securityGroupList);
+        runRequest.setIamInstanceProfile(iamSpecification);
         runRequest.setTagSpecifications(tagSpecifications);
 
         RunInstancesResult runRequestResult = ec2Client.runInstances(runRequest);

@@ -35,9 +35,9 @@ public class Worker {
     private static final String INPUT_QUEUE_NAME = "inputMessageQueue";
     private static final String OUTPUT_QUEUE_NAME = "outputMessageQueue";
 
-    private static final String INPUT_FILE_DOWNLOAD_PATH = "./resources/input/";
-    private static final String OUTPUT_RESULT_PATH = "./resources/output/";
-    private static final String DARKNET_PATH = "./code/darknet/";
+    private static final String INPUT_FILE_DOWNLOAD_PATH = "/home/ubuntu/resources/input/";
+    private static final String OUTPUT_RESULT_PATH = "/home/ubuntu/resources/output/";
+    private static final String DARKNET_PATH = "/home/ubuntu/darknet/";
 
     private static final String COMMAND = "Xvfb :1 & export DISPLAY=:1;cd {0};./darknet detector demo cfg/coco.data cfg/yolov3-tiny.cfg yolov3-tiny.weights {1}{3} -dont_show > {2}{3}.txt";
 
@@ -78,20 +78,29 @@ public class Worker {
     }
 
     public void run() {
-        String key = getKeyFromSQS();
+        while (true) {
+            String key = getKeyFromSQS();
 
-        if (key != null) {
-            boolean fileDownloadStatus = downloadFileFromS3(key);
+            if (key != null) {
+                boolean fileDownloadStatus = downloadFileFromS3(key);
 
-            if (fileDownloadStatus) {
-                recognizeObject(key);
-                List<String> results = extractOutput(OUTPUT_RESULT_PATH + key);
-                StringBuilder outputKeyBuilder = new StringBuilder("(\"")
-                        .append(key)
-                        .append("\",\"");
-                results.forEach(s -> outputKeyBuilder.append(s).append(","));
-                outputKeyBuilder.append("\")");
-                System.out.println(outputQueueUrl.toString());
+                if (fileDownloadStatus) {
+                    recognizeObject(key);
+                    List<String> results = extractOutput(OUTPUT_RESULT_PATH + key);
+                    StringBuilder outputKeyBuilder = new StringBuilder("(\"")
+                            .append(key)
+                            .append("\",\"");
+                    results.forEach(s -> outputKeyBuilder.append(s).append(","));
+                    outputKeyBuilder.append("\")");
+                    System.out.println(outputQueueUrl.toString());
+                }
+            } else {
+                System.out.println("Sleeping for 5 seconds...\n");
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
