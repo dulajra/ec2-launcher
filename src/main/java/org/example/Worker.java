@@ -19,8 +19,14 @@ import java.io.BufferedReader;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class Worker {
 
@@ -33,7 +39,7 @@ public class Worker {
     private static final String OUTPUT_RESULT_PATH = "./resources/output/";
     private static final String DARKNET_PATH = "./code/darknet/";
 
-    private static final String COMMAND = "bash -c Xvfb :1 & export DISPLAY=:1; cd {0}; ./darknet detector demo cfg/coco.data cfg/yolov3-tiny.cfg yolov3-tiny.weights {1}{2} -dont_show > {3};";
+    private static final String COMMAND = "Xvfb :1 & export DISPLAY=:1;cd {0};./darknet detector demo cfg/coco.data cfg/yolov3-tiny.cfg yolov3-tiny.weights {1}{3} -dont_show > {2}{3}.txt";
 
     private AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
             .withRegion(Configs.REGION)
@@ -50,34 +56,44 @@ public class Worker {
     private String inputQueueUrl = sqsClient.getQueueUrl(INPUT_QUEUE_NAME).getQueueUrl();
     private String outputQueueUrl = sqsClient.getQueueUrl(OUTPUT_QUEUE_NAME).getQueueUrl();
 
-    public void run() {
-        String key = getKeyFromSQS();
-        boolean fileDownloadStatus = downloadFileFromS3(key);
+    private static String executeCommand(String command) {
+        StringBuffer recognisedImage = new StringBuffer();
 
-        if (fileDownloadStatus) {
-            recognizeObject(key);
+        Process imageRecognitionReq;
+        try {
+            imageRecognitionReq = Runtime.getRuntime().exec(command);
+            imageRecognitionReq.waitFor();
+            BufferedReader terminalReader = new BufferedReader(new InputStreamReader(imageRecognitionReq.getInputStream()));
+
+            String eachLine = "";
+            while ((eachLine = terminalReader.readLine()) != null) {
+                recognisedImage.append(eachLine + "\n");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "-1";
         }
+        return recognisedImage.toString();
     }
 
-    private String getKeyFromSQS() {
-        ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(inputQueueUrl);
-        receiveMessageRequest.setMaxNumberOfMessages(1);
-        receiveMessageRequest.setVisibilityTimeout(90);
-        receiveMessageRequest.setWaitTimeSeconds(0);
-        ReceiveMessageResult result = sqsClient.receiveMessage(receiveMessageRequest);
+    public void run() {
+        String key = getKeyFromSQS();
 
-        System.out.println("Checking for new messages");
-        List<Message> messages = result.getMessages();
-        String key = null;
+        if (key != null) {
+            boolean fileDownloadStatus = downloadFileFromS3(key);
 
-        if (messages.isEmpty()) {
-            System.out.println("No new messages found!");
-        } else {
-            key = messages.get(0).getBody();
-            System.out.println("New message found. Key: " + key);
+            if (fileDownloadStatus) {
+                recognizeObject(key);
+                List<String> results = extractOutput(OUTPUT_RESULT_PATH + key);
+                StringBuilder outputKeyBuilder = new StringBuilder("(\"")
+                        .append(key)
+                        .append("\",\"");
+                results.forEach(s -> outputKeyBuilder.append(s).append(","));
+                outputKeyBuilder.append("\")");
+                System.out.println(outputQueueUrl.toString());
+            }
         }
-
-        return key;
     }
 
     private boolean downloadFileFromS3(String key) {
@@ -121,38 +137,56 @@ public class Worker {
         ec2Client.terminateInstances(request);
     }
 
+    private String getKeyFromSQS() {
+        ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(inputQueueUrl);
+        receiveMessageRequest.setMaxNumberOfMessages(1);
+        receiveMessageRequest.setVisibilityTimeout(90);
+        receiveMessageRequest.setWaitTimeSeconds(0);
+        ReceiveMessageResult result = sqsClient.receiveMessage(receiveMessageRequest);
+
+        System.out.println("Checking for new messages");
+        List<Message> messages = result.getMessages();
+
+        if (messages.isEmpty()) {
+            System.out.println("No new messages found!");
+            return null;
+        } else {
+            String key = messages.get(0).getBody();
+            System.out.println("New message found. Key: " + key);
+            return key;
+        }
+    }
+
     private void recognizeObject(String key) {
         System.out.println("Start recognition...");
 
         try {
-            ProcessBuilder pb = new ProcessBuilder(MessageFormat.format(COMMAND, DARKNET_PATH, INPUT_FILE_DOWNLOAD_PATH, key, OUTPUT_RESULT_PATH));
+            ProcessBuilder pb = new ProcessBuilder(MessageFormat.format(COMMAND, DARKNET_PATH, INPUT_FILE_DOWNLOAD_PATH, OUTPUT_RESULT_PATH, key));
             Process process = pb.start();
             int errCode = process.waitFor();
             System.out.println("Exited with code : " + errCode);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
 
-        StringBuilder recognisedImage = new StringBuilder();
-        String result = "-1";
-        Process imageRecognitionReq;
+    public List<String> extractOutput(String filepath) {
+        Set<String> results = new HashSet<>();
 
         try {
-            imageRecognitionReq = Runtime.getRuntime().exec("cat darknet/result_label");
-            imageRecognitionReq.waitFor();
-            BufferedReader terminalReader = new BufferedReader(new InputStreamReader(imageRecognitionReq.getInputStream()));
+            String fileContent = new String(Files.readAllBytes(Paths.get(filepath)), StandardCharsets.UTF_8);
+            String[] lines = fileContent.split("\n");
 
-            String eachLine = "";
-            while ((eachLine = terminalReader.readLine()) != null) {
-                recognisedImage.append(eachLine).append("\n");
+            for (String line : lines) {
+                if (line.contains(":") && line.contains("%")) {
+                    results.add(line.split(":")[0]);
+                }
             }
-
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
-        result = recognisedImage.toString();
-        System.out.println("Recognition complete. Result: " + result);
+        return new ArrayList<>(results);
     }
 
 }
