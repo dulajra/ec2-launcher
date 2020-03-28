@@ -253,7 +253,7 @@ public class Worker {
     private String getKeyFromSQS() {
         ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(inputQueueUrl);
         receiveMessageRequest.setMaxNumberOfMessages(1);
-        receiveMessageRequest.setVisibilityTimeout(120);
+        receiveMessageRequest.setVisibilityTimeout(180); // Queue default is 3 minutes at this time
         receiveMessageRequest.setWaitTimeSeconds(0);
         ReceiveMessageResult result = sqsClient.receiveMessage(receiveMessageRequest);
 
