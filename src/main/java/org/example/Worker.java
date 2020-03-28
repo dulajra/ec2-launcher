@@ -44,15 +44,15 @@ public class Worker {
     private static final String COMMAND = "Xvfb :1 & export DISPLAY=:1;cd {0};./darknet detector demo cfg/coco.data cfg/yolov3-tiny.cfg yolov3-tiny.weights {1}{3} -dont_show > {2}{3}.txt";
 
     private AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
-            .withRegion(Configs.REGION)
+            .withRegion(AWSConfigs.REGION)
             .build();
 
     private AmazonSQS sqsClient = AmazonSQSClientBuilder.standard()
-            .withRegion(Configs.REGION)
+            .withRegion(AWSConfigs.REGION)
             .build();
 
     private AmazonEC2 ec2Client = AmazonEC2ClientBuilder.standard()
-            .withRegion(Configs.REGION)
+            .withRegion(AWSConfigs.REGION)
             .build();
 
     private String inputQueueUrl = sqsClient.getQueueUrl(INPUT_QUEUE_NAME).getQueueUrl();
@@ -60,28 +60,6 @@ public class Worker {
 
     private Message message;
     private int sleepsCount = 0;
-
-    private static String executeCommand(String command) {
-        StringBuffer recognisedImage = new StringBuffer();
-
-        Process imageRecognitionReq;
-        try {
-            imageRecognitionReq = Runtime.getRuntime().exec(command);
-            imageRecognitionReq.waitFor();
-            BufferedReader terminalReader = new BufferedReader(new InputStreamReader(imageRecognitionReq.getInputStream()));
-
-            String eachLine = "";
-            while ((eachLine = terminalReader.readLine()) != null) {
-                recognisedImage.append(eachLine + "\n");
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "-1";
-        }
-
-        return recognisedImage.toString();
-    }
 
     public void run() {
         while (true) {
@@ -120,7 +98,7 @@ public class Worker {
                     executeCommand("rm -rf " + OUTPUT_RESULT_PATH + outputFilename);
                 }
             } else {
-                if(sleepsCount++ < MAX_SLEEPS_BEFORE_SHUTDOWN) {
+                if (sleepsCount++ < MAX_SLEEPS_BEFORE_SHUTDOWN) {
                     System.out.println("Sleeping for 5 seconds. Sleep count: " + sleepsCount + "\n");
                     try {
                         Thread.sleep(5000);
@@ -133,6 +111,49 @@ public class Worker {
                     break;
                 }
             }
+        }
+    }
+
+    private String executeCommand(String command) {
+        StringBuffer recognisedImage = new StringBuffer();
+
+        Process imageRecognitionReq;
+        try {
+            imageRecognitionReq = Runtime.getRuntime().exec(command);
+            imageRecognitionReq.waitFor();
+            BufferedReader terminalReader = new BufferedReader(new InputStreamReader(imageRecognitionReq.getInputStream()));
+
+            String eachLine = "";
+            while ((eachLine = terminalReader.readLine()) != null) {
+                recognisedImage.append(eachLine + "\n");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "-1";
+        }
+
+        return recognisedImage.toString();
+    }
+
+    private String getKeyFromSQS() {
+        ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(inputQueueUrl);
+        receiveMessageRequest.setMaxNumberOfMessages(1);
+        receiveMessageRequest.setVisibilityTimeout(90);
+        receiveMessageRequest.setWaitTimeSeconds(0);
+        ReceiveMessageResult result = sqsClient.receiveMessage(receiveMessageRequest);
+
+        System.out.println("Checking for new messages");
+        List<Message> messages = result.getMessages();
+
+        if (messages.isEmpty()) {
+            System.out.println("No new messages found!");
+            return null;
+        } else {
+            message = messages.get(0);
+            String key = message.getBody();
+            System.out.println("New message found. Key: " + key);
+            return key;
         }
     }
 
@@ -175,27 +196,6 @@ public class Worker {
         String myId = EC2MetadataUtils.getInstanceId();
         TerminateInstancesRequest request = new TerminateInstancesRequest().withInstanceIds(myId);
         ec2Client.terminateInstances(request);
-    }
-
-    private String getKeyFromSQS() {
-        ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(inputQueueUrl);
-        receiveMessageRequest.setMaxNumberOfMessages(1);
-        receiveMessageRequest.setVisibilityTimeout(90);
-        receiveMessageRequest.setWaitTimeSeconds(0);
-        ReceiveMessageResult result = sqsClient.receiveMessage(receiveMessageRequest);
-
-        System.out.println("Checking for new messages");
-        List<Message> messages = result.getMessages();
-
-        if (messages.isEmpty()) {
-            System.out.println("No new messages found!");
-            return null;
-        } else {
-            message = messages.get(0);
-            String key = message.getBody();
-            System.out.println("New message found. Key: " + key);
-            return key;
-        }
     }
 
     private void recognizeObject(String key) {

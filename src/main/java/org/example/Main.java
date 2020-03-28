@@ -18,7 +18,7 @@ public class Main {
                 System.out.println("Unrecognized option");
             }
         } else {
-            System.out.println("No arguments supplied");
+            System.out.println("No arguments supplied. Valid arguments:\n\ta - auto scaling mode\n\tw - worker mode");
         }
     }
 }

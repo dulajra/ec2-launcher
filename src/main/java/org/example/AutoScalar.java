@@ -23,7 +23,6 @@ import java.util.Map;
 public class AutoScalar {
 
     private static final String REGION = "us-east-1";
-    private static final int MAX_TOTAL_INSTANCES_ALLOWED = 8;
 
     private static final String INPUT_QUEUE_NAME = "inputMessageQueue";
     private static final String SECURITY_GROUP_ID = "sg-0b8881f281d0e29ff";
@@ -40,52 +39,60 @@ public class AutoScalar {
     private String inputQueueUrl = sqsClient.getQueueUrl(INPUT_QUEUE_NAME).getQueueUrl();
 
     public void run() {
-        scaleUpInstances();
+        while (true) {
+            scaleUpInstances();
+        }
     }
 
+    /**
+     * Check all conditions and launch desired new workers
+     */
     public void scaleUpInstances() {
-        while (true) {
-            int countOfPendingRequests = numberOfMessagesCurrentlyInQueue(inputQueueUrl);
-            System.out.println("\nTotal no messages in queue: " + countOfPendingRequests);
+        int countOfPendingRequests = numberOfMessagesCurrentlyInQueue(inputQueueUrl);
+        System.out.println("\nTotal no messages in queue: " + countOfPendingRequests);
 
-            if (countOfPendingRequests > 0) {
-                int totalInstances = numberOfRunningInstances();
-                System.out.println("Total running instances: " + totalInstances);
-                int workerInstances = numberOfWorkerInstances();
-                System.out.println("Total running workers: " + workerInstances);
+        if (countOfPendingRequests > 0) {
+            int totalInstances = numberOfRunningInstances();
+            System.out.println("Total running instances: " + totalInstances);
+            int workerInstances = numberOfWorkerInstances();
+            System.out.println("Total running workers: " + workerInstances);
 
-                if (countOfPendingRequests > workerInstances) {
+            if (countOfPendingRequests > workerInstances) {
 
-                    int maxAllowedLaunches = MAX_TOTAL_INSTANCES_ALLOWED - totalInstances;
+                int maxAllowedLaunches = AWSConfigs.MAX_TOTAL_INSTANCES_ALLOWED - totalInstances;
 
-                    if (maxAllowedLaunches > 0) {
-                        int requiredNewWorkers = countOfPendingRequests - workerInstances;
-                        System.out.println("Need new workers: " + requiredNewWorkers);
-                        int toCreate = Math.min(maxAllowedLaunches, requiredNewWorkers);
-                        System.out.println("Creating new workers: " + toCreate);
-                        createAppTierInstances(toCreate);
-                    } else {
-                        System.out.println("No more instances are allowed!");
-                    }
-
-                    try {
-                        Thread.sleep(10000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                if (maxAllowedLaunches > 0) {
+                    int requiredNewWorkers = countOfPendingRequests - workerInstances;
+                    System.out.println("Need new workers: " + requiredNewWorkers);
+                    int toCreate = Math.min(maxAllowedLaunches, requiredNewWorkers);
+                    System.out.println("Creating new workers: " + toCreate);
+                    createAppTierInstances(toCreate);
+                } else {
+                    System.out.println("No more instances are allowed!");
                 }
-            } else {
-                System.out.println("No pending requests. Going to sleep...");
+
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
-
+        } else {
+            System.out.println("No pending requests. Going to sleep...");
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
+    /**
+     * Get number of messages available in the queue
+     *
+     * @param inputQueueURL SQS url
+     * @return Number of pending messages
+     */
     private int numberOfMessagesCurrentlyInQueue(String inputQueueURL) {
         List<String> attributes = new ArrayList<String>();
         attributes.add("ApproximateNumberOfMessages");
@@ -94,6 +101,11 @@ public class AutoScalar {
         return Integer.parseInt(response_map.get("ApproximateNumberOfMessages"));
     }
 
+    /**
+     * Get the number of total instances active in the AWS account region
+     *
+     * @return Number of instances
+     */
     private int numberOfRunningInstances() {
         DescribeInstancesRequest request = new DescribeInstancesRequest();
         request.withFilters(
@@ -110,6 +122,11 @@ public class AutoScalar {
         return count;
     }
 
+    /**
+     * Get the number of total workers running
+     *
+     * @return Number of workers
+     */
     private int numberOfWorkerInstances() {
         DescribeInstancesRequest request = new DescribeInstancesRequest();
         request.withFilters(
@@ -128,6 +145,11 @@ public class AutoScalar {
         return count;
     }
 
+    /**
+     * Launch new workers
+     *
+     * @param numberOfInstancesToLaunch Number of workers to launch
+     */
     private void createAppTierInstances(int numberOfInstancesToLaunch) {
         Collection<Tag> tags = new ArrayList<>();
 
