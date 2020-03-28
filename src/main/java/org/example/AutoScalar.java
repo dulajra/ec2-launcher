@@ -1,5 +1,6 @@
 package org.example;
 
+import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
@@ -33,9 +34,11 @@ public class AutoScalar {
     private AmazonSQS sqsClient = AmazonSQSClientBuilder.standard()
             .withRegion(REGION)
             .build();
+
     private AmazonEC2 ec2Client = AmazonEC2ClientBuilder.standard()
             .withRegion(REGION)
             .build();
+
     private String inputQueueUrl = sqsClient.getQueueUrl(INPUT_QUEUE_NAME).getQueueUrl();
 
     public void run() {
@@ -71,6 +74,14 @@ public class AutoScalar {
                     System.out.println("No more instances are allowed!");
                 }
 
+                try {
+                    System.out.println("Going to sleep...");
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                System.out.println("There are enough workers. Going to sleep...");
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException e) {

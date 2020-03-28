@@ -1,5 +1,6 @@
 package org.example;
 
+import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
