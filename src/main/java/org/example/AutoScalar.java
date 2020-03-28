@@ -14,7 +14,6 @@ import com.amazonaws.services.ec2.model.TagSpecification;
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
 import com.amazonaws.services.sqs.model.GetQueueAttributesRequest;
-import main.java.Configs;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,18 +22,20 @@ import java.util.Map;
 
 public class AutoScalar {
 
+    private static final String REGION = "us-east-1";
     private static final int MAX_TOTAL_INSTANCES_ALLOWED = 8;
+
     private static final String INPUT_QUEUE_NAME = "inputMessageQueue";
     private static final String SECURITY_GROUP_ID = "sg-0b8881f281d0e29ff";
+    private static final String AMI_ID = "ami-0c091a79239cf5f1e";
     private static final String IAM_ROLE_NAME = "Pi-Developer-Role";
-    private static final String AMI_ID = "ami-0f288d91f39b59fa2";
     private static final String INSTANCE_TYPE = "t2.micro";
 
     private AmazonSQS sqsClient = AmazonSQSClientBuilder.standard()
-            .withRegion(Configs.REGION)
+            .withRegion(REGION)
             .build();
     private AmazonEC2 ec2Client = AmazonEC2ClientBuilder.standard()
-            .withRegion(Configs.REGION)
+            .withRegion(REGION)
             .build();
     private String inputQueueUrl = sqsClient.getQueueUrl(INPUT_QUEUE_NAME).getQueueUrl();
 

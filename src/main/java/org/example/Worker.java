@@ -13,9 +13,9 @@ import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 import com.amazonaws.util.EC2MetadataUtils;
-import main.java.Configs;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Set;
 
 public class Worker {
+
+    private static final int MAX_SLEEPS_BEFORE_SHUTDOWN = 3;
 
     private static final String INPUT_S3_NAME = "ccjarfiles";
     private static final String OUTPUT_S3_NAME = "ccjarfiles";
@@ -56,6 +58,9 @@ public class Worker {
     private String inputQueueUrl = sqsClient.getQueueUrl(INPUT_QUEUE_NAME).getQueueUrl();
     private String outputQueueUrl = sqsClient.getQueueUrl(OUTPUT_QUEUE_NAME).getQueueUrl();
 
+    private Message message;
+    private int sleepsCount = 0;
+
     private static String executeCommand(String command) {
         StringBuffer recognisedImage = new StringBuffer();
 
@@ -74,6 +79,7 @@ public class Worker {
             e.printStackTrace();
             return "-1";
         }
+
         return recognisedImage.toString();
     }
 
@@ -86,20 +92,45 @@ public class Worker {
 
                 if (fileDownloadStatus) {
                     recognizeObject(key);
-                    List<String> results = extractOutput(OUTPUT_RESULT_PATH + key);
-                    StringBuilder outputKeyBuilder = new StringBuilder("(\"")
-                            .append(key)
-                            .append("\",\"");
-                    results.forEach(s -> outputKeyBuilder.append(s).append(","));
-                    outputKeyBuilder.append("\")");
-                    System.out.println(outputQueueUrl.toString());
+
+                    List<String> results = extractOutput(OUTPUT_RESULT_PATH + key + ".txt");
+                    StringBuilder resultLabelBuilder = new StringBuilder();
+
+                    for (int i = 0; i < results.size(); i++) {
+                        resultLabelBuilder.append(results.get(i));
+
+                        if (i < results.size() - 1) {
+                            resultLabelBuilder.append(",");
+                        }
+                    }
+
+                    String resultLabel = resultLabelBuilder.toString();
+                    System.out.println("Recognition result: " + resultLabel);
+
+                    String outputFilename = "(" + key + "," + resultLabel + ")";
+                    s3Client.putObject(OUTPUT_S3_NAME, outputFilename, new File(OUTPUT_RESULT_PATH + key + ".txt"));
+
+                    System.out.println("Publishing result to SQS...");
+                    sqsClient.deleteMessage(inputQueueUrl, message.getReceiptHandle());
+                    System.out.println("Uploading result to S3...");
+                    sqsClient.sendMessage(outputQueueUrl, outputFilename);
+
+                    System.out.println("Cleaning worker...");
+                    executeCommand("rm -rf " + INPUT_FILE_DOWNLOAD_PATH + key);
+                    executeCommand("rm -rf " + OUTPUT_RESULT_PATH + outputFilename);
                 }
             } else {
-                System.out.println("Sleeping for 5 seconds...\n");
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                if(sleepsCount++ < MAX_SLEEPS_BEFORE_SHUTDOWN) {
+                    System.out.println("Sleeping for 5 seconds. Sleep count: " + sleepsCount + "\n");
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    System.out.println("Max sleeps reached. Terminating the worker");
+                    terminateInstance();
+                    break;
                 }
             }
         }
@@ -160,7 +191,8 @@ public class Worker {
             System.out.println("No new messages found!");
             return null;
         } else {
-            String key = messages.get(0).getBody();
+            message = messages.get(0);
+            String key = message.getBody();
             System.out.println("New message found. Key: " + key);
             return key;
         }
@@ -170,10 +202,10 @@ public class Worker {
         System.out.println("Start recognition...");
 
         try {
-            ProcessBuilder pb = new ProcessBuilder(MessageFormat.format(COMMAND, DARKNET_PATH, INPUT_FILE_DOWNLOAD_PATH, OUTPUT_RESULT_PATH, key));
+            ProcessBuilder pb = new ProcessBuilder("bash", "-c", MessageFormat.format(COMMAND, DARKNET_PATH, INPUT_FILE_DOWNLOAD_PATH, OUTPUT_RESULT_PATH, key));
             Process process = pb.start();
             int errCode = process.waitFor();
-            System.out.println("Exited with code : " + errCode);
+            System.out.println("Recognition complete. Exited with code : " + errCode);
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -1,3 +1,4 @@
+/*
 package main.java;
 
 import com.amazonaws.services.ec2.model.InstanceType;
@@ -25,3 +26,4 @@ public class Configs {
     public static final String REMOTE_JAR_DIRECTORY = "./";
     public static final Object CRON_COMMAND = "@reboot java -cp ~/appBath/app.jar App";
 }
+*/
