@@ -26,7 +26,7 @@ public class AutoScalar {
 
     private static final String INPUT_QUEUE_NAME = "inputMessageQueue";
     private static final String SECURITY_GROUP_ID = "sg-0b8881f281d0e29ff";
-    private static final String AMI_ID = "ami-0c091a79239cf5f1e";
+    private static final String AMI_ID = "ami-0c40902670abd78da";
     private static final String IAM_ROLE_NAME = "Pi-Developer-Role";
     private static final String INSTANCE_TYPE = "t2.micro";
 
