@@ -13,6 +13,8 @@ import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageResult;
 import com.amazonaws.util.EC2MetadataUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -142,33 +144,19 @@ public class Worker {
         return stdout.toString();
     }
 
-    /**
-     * Get one key from SQS
-     * @return Key
-     */
-    private String getKeyFromSQS() {
-        ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(inputQueueUrl);
-        receiveMessageRequest.setMaxNumberOfMessages(1);
-        receiveMessageRequest.setVisibilityTimeout(90);
-        receiveMessageRequest.setWaitTimeSeconds(0);
-        ReceiveMessageResult result = sqsClient.receiveMessage(receiveMessageRequest);
-
-        System.out.println("Checking for new messages");
-        List<Message> messages = result.getMessages();
-
-        if (messages.isEmpty()) {
-            System.out.println("No new messages found!");
+    private static JsonNode createJSONObject(String jsonString) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readTree(jsonString);
+        } catch (IOException e) {
+            e.printStackTrace();
             return null;
-        } else {
-            message = messages.get(0);
-            String key = message.getBody();
-            System.out.println("New message found. Key: " + key);
-            return key;
         }
     }
 
     /**
      * Download fie with the given key from S3 to local machine
+     *
      * @param key
      * @return Download status.If success true else false
      */
@@ -255,6 +243,44 @@ public class Worker {
         }
 
         return new ArrayList<>(results);
+    }
+
+    /**
+     * Get one key from SQS
+     *
+     * @return Key
+     */
+    private String getKeyFromSQS() {
+        ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(inputQueueUrl);
+        receiveMessageRequest.setMaxNumberOfMessages(1);
+        receiveMessageRequest.setVisibilityTimeout(120);
+        receiveMessageRequest.setWaitTimeSeconds(0);
+        ReceiveMessageResult result = sqsClient.receiveMessage(receiveMessageRequest);
+
+        System.out.println("Checking for new messages");
+        List<Message> messages = result.getMessages();
+
+        if (messages.isEmpty()) {
+            System.out.println("No new messages found!");
+            return null;
+        } else {
+            message = messages.get(0);
+            String messageBody = message.getBody();
+            String key = null;
+
+            JsonNode jsonBody = createJSONObject(messageBody);
+
+            if (jsonBody != null) {
+                try {
+                    key = jsonBody.get("Records").get(0).get("s3").get("object").get("key").asText();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            System.out.println("New message found. Key: " + key);
+            return key;
+        }
     }
 
 }
