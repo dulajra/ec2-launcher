@@ -66,6 +66,7 @@ public class Worker {
             String key = getKeyFromSQS();
 
             if (key != null) {
+                sleepsCount = 0;
                 boolean fileDownloadStatus = downloadFileFromS3(key);
 
                 if (fileDownloadStatus) {
