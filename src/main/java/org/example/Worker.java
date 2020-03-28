@@ -115,7 +115,7 @@ public class Worker {
     }
 
     private String executeCommand(String command) {
-        StringBuffer recognisedImage = new StringBuffer();
+        StringBuilder stdout = new StringBuilder();
 
         Process imageRecognitionReq;
         try {
@@ -125,7 +125,7 @@ public class Worker {
 
             String eachLine = "";
             while ((eachLine = terminalReader.readLine()) != null) {
-                recognisedImage.append(eachLine + "\n");
+                stdout.append(eachLine).append("\n");
             }
 
         } catch (Exception e) {
@@ -133,7 +133,7 @@ public class Worker {
             return "-1";
         }
 
-        return recognisedImage.toString();
+        return stdout.toString();
     }
 
     private String getKeyFromSQS() {
