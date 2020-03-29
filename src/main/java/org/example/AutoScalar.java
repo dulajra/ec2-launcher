@@ -19,9 +19,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-public class AutoScalar {
+import static org.example.AWSConfigs.MAX_TOTAL_INSTANCES_ALLOWED_FOR_ACCOUNT;
+import static org.example.AWSConfigs.REGION;
 
-    private static final String REGION = "us-east-1";
+public class AutoScalar {
 
     private static final String INPUT_QUEUE_NAME = "inputMessageQueue";
     private static final String SECURITY_GROUP_ID = "sg-0b8881f281d0e29ff";
@@ -62,7 +63,7 @@ public class AutoScalar {
             System.out.println("Total running workers: " + workerInstances);
 
             if (countOfPendingRequests > workerInstances) {
-                int maxAllowedLaunches = AWSConfigs.MAX_TOTAL_INSTANCES_ALLOWED - totalInstances;
+                int maxAllowedLaunches = MAX_TOTAL_INSTANCES_ALLOWED_FOR_ACCOUNT - totalInstances;
 
                 if (maxAllowedLaunches > 0) {
                     int requiredNewWorkers = countOfPendingRequests - workerInstances;
