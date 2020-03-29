@@ -1,6 +1,5 @@
 package org.example;
 
-import com.amazonaws.auth.InstanceProfileCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
@@ -9,7 +8,6 @@ import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.IamInstanceProfileSpecification;
 import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
-import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.Tag;
 import com.amazonaws.services.ec2.model.TagSpecification;
 import com.amazonaws.services.sqs.AmazonSQS;
@@ -31,6 +29,8 @@ public class AutoScalar {
     private static final String IAM_ROLE_NAME = "Pi-Developer-Role";
     private static final String INSTANCE_TYPE = "t2.micro";
 
+    private static final int SLEEP_TIME = 10;
+
     private AmazonSQS sqsClient = AmazonSQSClientBuilder.standard()
             .withRegion(REGION)
             .build();
@@ -42,6 +42,7 @@ public class AutoScalar {
     private String inputQueueUrl = sqsClient.getQueueUrl(INPUT_QUEUE_NAME).getQueueUrl();
 
     public void run() {
+        //noinspection InfiniteLoopStatement
         while (true) {
             scaleUpInstances();
         }
@@ -56,45 +57,38 @@ public class AutoScalar {
 
         if (countOfPendingRequests > 0) {
             int totalInstances = numberOfRunningInstances();
-            System.out.println("Total running instances: " + totalInstances);
+            System.out.println("Total running instances in region: " + totalInstances);
             int workerInstances = numberOfWorkerInstances();
             System.out.println("Total running workers: " + workerInstances);
 
             if (countOfPendingRequests > workerInstances) {
-
                 int maxAllowedLaunches = AWSConfigs.MAX_TOTAL_INSTANCES_ALLOWED - totalInstances;
 
                 if (maxAllowedLaunches > 0) {
                     int requiredNewWorkers = countOfPendingRequests - workerInstances;
-                    System.out.println("Need new workers: " + requiredNewWorkers);
+                    System.out.println("Required new workers: " + requiredNewWorkers);
                     int toCreate = Math.min(maxAllowedLaunches, requiredNewWorkers);
                     System.out.println("Creating new workers: " + toCreate);
-                    createAppTierInstances(toCreate);
+                    launchNewWorkers(toCreate);
                 } else {
                     System.out.println("No more instances are allowed!");
                 }
-
-                try {
-                    System.out.println("Going to sleep...");
-                    Thread.sleep(10000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
             } else {
-                System.out.println("There are enough workers. Going to sleep...");
-                try {
-                    Thread.sleep(10000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                System.out.println("There are enough workers");
             }
         } else {
-            System.out.println("No pending requests. Going to sleep...");
-            try {
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            System.out.println("No pending requests");
+        }
+
+        System.out.println("Going to sleep for " + SLEEP_TIME + " seconds...");
+        sleep();
+    }
+
+    private void sleep() {
+        try {
+            Thread.sleep(AutoScalar.SLEEP_TIME * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
@@ -105,7 +99,7 @@ public class AutoScalar {
      * @return Number of pending messages
      */
     private int numberOfMessagesCurrentlyInQueue(String inputQueueURL) {
-        List<String> attributes = new ArrayList<String>();
+        List<String> attributes = new ArrayList<>();
         attributes.add("ApproximateNumberOfMessages");
         GetQueueAttributesRequest getQueueAttributesRequest = new GetQueueAttributesRequest(inputQueueURL, attributes);
         Map<String, String> response_map = sqsClient.getQueueAttributes(getQueueAttributesRequest).getAttributes();
@@ -129,6 +123,8 @@ public class AutoScalar {
         for (Reservation reservation : describeInstancesResult.getReservations()) {
             count += reservation.getInstances().size();
         }
+
+        count += describeInstancesResult.getReservations().stream().mapToInt(reservation -> reservation.getInstances().size()).sum();
 
         return count;
     }
@@ -161,7 +157,7 @@ public class AutoScalar {
      *
      * @param numberOfInstancesToLaunch Number of workers to launch
      */
-    private void createAppTierInstances(int numberOfInstancesToLaunch) {
+    private void launchNewWorkers(int numberOfInstancesToLaunch) {
         Collection<Tag> tags = new ArrayList<>();
 
         Tag t = new Tag();
@@ -174,7 +170,7 @@ public class AutoScalar {
         t.setValue("auto-scaled");
         tags.add(t);
 
-        List<String> securityGroupList = new ArrayList<String>();
+        List<String> securityGroupList = new ArrayList<>();
         securityGroupList.add(SECURITY_GROUP_ID);
 
         TagSpecification tagSpecification = new TagSpecification();
@@ -193,7 +189,7 @@ public class AutoScalar {
         runRequest.setIamInstanceProfile(iamSpecification);
         runRequest.setTagSpecifications(tagSpecifications);
 
-        RunInstancesResult runRequestResult = ec2Client.runInstances(runRequest);
+        ec2Client.runInstances(runRequest);
     }
 
 }
