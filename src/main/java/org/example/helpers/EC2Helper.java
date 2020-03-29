@@ -52,7 +52,7 @@ public class EC2Helper {
      */
 
     public RunInstancesResult launchEC2(String name, String amiID, int instanceCount) {
-        Collection<Tag> tags = new ArrayList<Tag>();
+        Collection<Tag> tags = new ArrayList<>();
         Tag t = new Tag();
         t.setKey("Name");
         t.setValue(name);
